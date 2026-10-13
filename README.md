@@ -67,10 +67,6 @@ El contrato está en `src/models/contracts.py`; el ejemplo reemplazable está en
 
 `Dashboard.render()` sólo presenta resultados, `charts.py` dibuja y `theme.py` centraliza colores. Las gráficas se renderizan a PNG con Matplotlib/Agg y se presentan en un `Chart` persistente con `Image` e `InteractiveViewer`. El visor tiene dimensiones explícitas y conserva zoom al cambiar de generación. Esto evita comparar miles de primitivas Canvas al actualizar la página.
 
-## Comprobaciones
-
-`python tools/check_desktop.py` abre una ventana temporal, despacha eventos reales de Flet, verifica gráficas, navegación y pausa, guarda capturas de ventanas pequeñas en `artifacts/desktop_check` y cierra la ventana. `python tools/check_interface.py` verifica contratos y estado sin abrir cliente. La primera ejecución de Matplotlib puede crear una caché de fuentes en tu perfil de usuario.
-
 ## Referencias
 
 Referencias oficiales: [Flet](https://flet.dev/docs/), [Slider](https://flet.dev/docs/controls/slider/), [Dropdown](https://flet.dev/docs/controls/dropdown/).
