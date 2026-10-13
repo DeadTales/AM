@@ -2,6 +2,9 @@
 __pycache__/
 *.py[codz]
 *$py.class
+tools/
+documentation_staging/
+artifacts/
 
 # C extensions
 *.so
