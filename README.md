@@ -1,9 +1,5 @@
 # Evolución Lab
 
-La documentación incluye `..\documentación\AM\09_demo_engine_paso_a_paso.ipynb`: explica cada apartado de `demo_engine.py`, comprensiones anidadas, generadores, repetición de listas/tuplas, empaquetado/desempaquetado y la conexión con Flet. Incluye versiones equivalentes con bucles tradicionales y ejemplos ejecutables comprobados. Empieza en `00_indice.ipynb` para navegar entre los diez notebooks.
-
-Para funciones de dos variables, Resultados ofrece **Superficie 3D** (predeterminada) y **Mapa de calor**. La superficie representa `(x, y, f(x,y))`, incluidos los individuos y el mejor destacado. Los sliders **Giro horizontal** e **Inclinación** cambian la cámara al soltarlos; zoom y arrastre amplían o desplazan la imagen, mientras que la rotación se controla con esos sliders. No cambia la dimensión del individuo ni los parámetros del algoritmo.
-
 Interfaz de escritorio en español con Flet 1.0.4, tema claro y vistas separadas de configuración y resultados. Incluye editor de población vectorial, parámetros de evolución, gráficas con zoom y reproducción de generaciones.
 
 El **Menú** permite alternar entre Configuración y Resultados; la flecha **Volver** recorre las vistas visitadas. Navegar conserva parámetros, ediciones pendientes y resultados, y pausa la reproducción. Resultados se habilita después de aplicar una configuración válida.
@@ -30,6 +26,8 @@ Las funciones provisionales son:
  * Ondulada. 
 
 Dichas funciones son de una o dos variables y orientadas a minimización. Se pueden reemplazar en `src/models/objectives.py`. En 2D la vista muestra un mapa de calor de f(x,y) con individuos superpuestos.
+
+Para funciones de dos variables, Resultados ofrece **Superficie 3D** (predeterminada) y **Mapa de calor**. La superficie representa `(x, y, f(x,y))`, incluidos los individuos y el mejor destacado. Los sliders **Giro horizontal** e **Inclinación** cambian la cámara al soltarlos; zoom y arrastre amplían o desplazan la imagen, mientras que la rotación se controla con esos sliders. No cambia la dimensión del individuo ni los parámetros del algoritmo.
 
 Selecciona función y número de variables. **Generar población** crea una muestra reproducible; la cantidad del generador no te obliga a conservar dicho tamaño o individuos, es decir, se pueden agregar, quitar y/o editar. Ingresa una coordenada por campo y pulsa **Agregar individuo**. Los botones de cada fila permiten editar o eliminar. **Guardar cambios** confirma una edición y **Cancelar edición** descarta el formulario pendiente. Pulsa **Ver resultados** para usar la lista guardada. Cambiar función o variables vacía la lista porque cambian sus etiquetas o dominio.
 
