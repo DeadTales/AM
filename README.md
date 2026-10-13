@@ -4,8 +4,6 @@ Interfaz de escritorio en español con Flet 1.0.4, tema claro y vistas separadas
 
 El **Menú** permite alternar entre Configuración y Resultados; la flecha **Volver** recorre las vistas visitadas. Navegar conserva parámetros, ediciones pendientes y resultados, y pausa la reproducción. Resultados se habilita después de aplicar una configuración válida.
 
-El menú y las acciones quedan fijos; sólo el cuerpo se desplaza. **Ver resultados** está accesible incluso a 760×640. En Resultados aparece **Editar configuración** en la misma barra inferior.
-
 `src/views/menu.py` contiene `Menu` y `MenuItem`; `src/views/router.py`, `ViewRouter` con rutas, historial y condiciones de acceso. Para añadir una vista, registra su control en el router y una opción del menú con el mismo identificador. Los campos usan `OutlineInputBorder` y `BorderSide` en lugar de las propiedades obsoletas `TextField.border_radius` y `TextField.border_color`.
 
 ```powershell
