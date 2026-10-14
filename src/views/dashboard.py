@@ -3,7 +3,7 @@ import asyncio
 import flet as ft
 from models.contracts import AlgorithmConfig, EvolutionEngine, validate_generations, validate_population
 from models.demo_engine import DemoEngine, initial_population
-from models.objectives import FUNCTIONS, get_objective
+from models.objectives import FIXED_DIMENSIONS, FUNCTIONS, get_objective
 from views.charts import Chart, heatmap, plot, surface3d
 from views.population_editor import PopulationEditor
 from views.menu import Menu, MenuItem
@@ -24,19 +24,22 @@ class Dashboard:
         self.history = []
         self.config = None
         self.is_demo = isinstance(self.engine, DemoEngine)
-        self.function = ft.Dropdown(label="Función objetivo", value="sphere", options=[ft.DropdownOption(key=k, text=name) for k, name in FUNCTIONS.items()], on_select=self.change_objective)
-        self.dimensions = ft.Dropdown(label="Variables por individuo", value="2", options=[ft.DropdownOption(key="1", text="Una variable · x"), ft.DropdownOption(key="2", text="Dos variables · x, y")], on_select=self.change_objective)
+        self.function = ft.Dropdown(label="Función objetivo", value="sine_1d", options=[ft.DropdownOption(key=k, text=name) for k, name in FUNCTIONS.items()], on_select=self.change_objective)
+        self.dimensions = ft.Dropdown(label="Variables por individuo", value="1", disabled=True, options=[ft.DropdownOption(key="1", text="Una variable · x"), ft.DropdownOption(key="2", text="Dos variables · x, y")], on_select=self.change_objective)
         self.size = field("Cantidad para generar", "20")
         self.generations = field("Generaciones", "40", on_change=self.invalidate)
         self.selection = ft.Dropdown(label="Selección", value="torneo", options=[ft.DropdownOption(key=k, text=k.capitalize()) for k in ("torneo", "ruleta", "elitista")], on_select=self.invalidate)
+        self.crossover_label = ft.Text("Cruza · 80 %", color=TEXT, size=14)
+        self.crossover = ft.Slider(min=0, max=100, divisions=100, value=80, label="{value}%", active_color=ACCENT, on_change=self.change_crossover)
         self.mutation_label = ft.Text("Mutación · 5 %", color=TEXT, size=14)
         self.mutation = ft.Slider(min=0, max=100, divisions=100, value=5, label="{value}%", active_color=ACCENT, on_change=self.change_mutation)
         self.message = ft.Text("Ajusta los parámetros y la población; después pulsa Ver resultados.", size=13, color=MUTED)
         self.formula = ft.Text(color=MUTED, size=12)
-        self.editor = PopulationEditor(dimensions=2, labels=("x", "y"), bounds=get_objective("sphere", 2).bounds, on_change=self.population_changed, on_refresh=self.page.update)
+        initial_obj = get_objective("sine_1d", 1)
+        self.editor = PopulationEditor(dimensions=initial_obj.dimensions, labels=initial_obj.labels, bounds=initial_obj.bounds, on_change=self.population_changed, on_refresh=self.page.update)
         self.metrics = ft.ResponsiveRow(spacing=14, run_spacing=12)
         self.function_chart = Chart(height=420)
-        self.chart_mode = ft.Dropdown(label="Visualización", value="surface", options=[ft.DropdownOption(key="surface", text="Superficie 3D"), ft.DropdownOption(key="heatmap", text="Mapa de calor")], on_select=self.change_chart)
+        self.chart_mode = ft.Dropdown(label="Visualización", value="heatmap", options=[ft.DropdownOption(key="surface", text="Superficie 3D"), ft.DropdownOption(key="heatmap", text="Mapa de calor")], on_select=self.change_chart)
         self.azimuth = ft.Slider(min=-180, max=180, divisions=72, value=-55, label="Giro: {value}°", active_color=ACCENT, on_change_end=self.change_chart)
         self.elevation = ft.Slider(min=5, max=85, divisions=16, value=30, label="Inclinación: {value}°", active_color=ACCENT, on_change_end=self.change_chart)
         self.camera_controls = ft.ResponsiveRow([ft.Column([ft.Text("Giro horizontal", size=12, color=MUTED), self.azimuth], col={"xs":12,"sm":6}, spacing=0), ft.Column([ft.Text("Inclinación", size=12, color=MUTED), self.elevation], col={"xs":12,"sm":6}, spacing=0)], visible=False)
@@ -59,8 +62,22 @@ class Dashboard:
         self.menu.select("config")
         self._prepare_population()
 
+    def _sync_dimension_control(self):
+        """Ajusta y bloquea/desbloquea el selector de variables según la función elegida."""
+        fixed = FIXED_DIMENSIONS.get(self.function.value)
+        if fixed is not None:
+            self.dimensions.value = str(fixed)
+            self.dimensions.disabled = True
+        else:
+            self.dimensions.disabled = False
+
+    def _best_index(self, scores: tuple[float, ...], maximize: bool) -> int:
+        """Devuelve el índice del mejor individuo según si se maximiza o minimiza."""
+        return max(range(len(scores)), key=lambda i: scores[i]) if maximize else min(range(len(scores)), key=lambda i: scores[i])
+
     def _prepare_population(self):
         """Carga población inicial de ejemplo y fórmula sin ejecutar el motor."""
+        self._sync_dimension_control()
         objective = get_objective(self.function.value, int(self.dimensions.value))
         self.editor.set_schema(objective.dimensions, objective.labels, objective.bounds, notify=False)
         self.editor.set_individuals(initial_population(int(self.size.value), objective), notify=False)
@@ -69,15 +86,15 @@ class Dashboard:
     def build(self) -> ft.Column:
         """Construye dos vistas para separar preparación y análisis visual."""
         self.configuration_view.controls = [ft.ResponsiveRow([
-            card("Parámetros", "Define cómo se evaluará tu población.", [self.function, self.dimensions, self.formula, ft.Divider(color=BORDER), self.generations, self.selection, ft.Column([self.mutation_label, self.mutation], spacing=0)], {"xs":12, "lg":4}),
+            card("Parámetros", "Define cómo se evaluará tu población.", [self.function, self.dimensions, self.formula, ft.Divider(color=BORDER), self.generations, self.selection, ft.Column([self.crossover_label, self.crossover], spacing=0), ft.Column([self.mutation_label, self.mutation], spacing=0)], {"xs":12, "lg":4}),
             card("Población inicial", "Cada fila es un individuo. Puedes agregarlo, editarlo o eliminarlo.", [ft.Row([self.size, ft.TextButton("Generar población", icon=ft.Icons.REFRESH, on_click=self.configure)], wrap=True), self.editor], {"xs":12, "lg":8}),
         ], spacing=20, run_spacing=20)]
         self.results_view.controls = [self.result_summary, self.metrics, ft.ResponsiveRow([
-            card("Función y población", "Superficie 3D o mapa de calor para dos variables · Zoom y arrastre", [self.chart_controls, self.function_chart], {"xs":12, "lg":8}),
+            card("Función y población", "Curva 1D, Superficie 3D o Mapa de calor 2D · Zoom y arrastre", [self.chart_controls, self.function_chart], {"xs":12, "lg":8}),
             card("Individuos", "Valores de la generación actual; el mejor aparece destacado.", [self.table], {"xs":12, "lg":4}),
-        ], spacing=20, run_spacing=20), card("Recorrido de generaciones", "Eje horizontal: generación · Eje vertical: mejor evaluación observada", [ft.Row([ft.IconButton(icon=ft.Icons.SKIP_PREVIOUS, tooltip="Volver a generación 0", on_click=self.reset), ft.IconButton(icon=ft.Icons.CHEVRON_LEFT, tooltip="Generación anterior", on_click=lambda e: self.step(-1)), self.play_button, ft.IconButton(icon=ft.Icons.CHEVRON_RIGHT, tooltip="Siguiente generación", on_click=lambda e: self.step(1))], wrap=True), self.timeline, self.progress, self.history_chart])]
+        ], spacing=20, run_spacing=20), card("Evolución del fitness (Convergencia)", "Eje horizontal: generación · Eje vertical: mejor evaluación de la generación", [ft.Row([ft.IconButton(icon=ft.Icons.SKIP_PREVIOUS, tooltip="Volver a generación 0", on_click=self.reset), ft.IconButton(icon=ft.Icons.CHEVRON_LEFT, tooltip="Generación anterior", on_click=lambda e: self.step(-1)), self.play_button, ft.IconButton(icon=ft.Icons.CHEVRON_RIGHT, tooltip="Siguiente generación", on_click=lambda e: self.step(1))], wrap=True), self.timeline, self.progress, self.history_chart])]
         self.body = ft.Column([self.message, self.router.outlet], spacing=16, scroll=ft.ScrollMode.AUTO, expand=True, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
-        return ft.Column([ft.Row([ft.Icon(ft.Icons.SCIENCE_OUTLINED, color=ACCENT, size=26), ft.Text("Evolución Lab", size=24, weight=ft.FontWeight.W_600, color=TEXT), ft.Text("Demostración" if self.is_demo else "Motor conectado", color=ACCENT, size=12)], spacing=12), self.menu, self.body, self.actions], spacing=12, expand=True, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
+        return ft.Column([ft.Row([ft.Icon(ft.Icons.SCIENCE_OUTLINED, color=ACCENT, size=26), ft.Text("Evolución Lab", size=24, weight=ft.FontWeight.W_600, color=TEXT), ft.Text("Demostración" if self.is_demo else "Motor Genético Conectado", color=ACCENT, size=12)], spacing=12), self.menu, self.body, self.actions], spacing=12, expand=True, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
 
     def show_view(self, name: str):
         """Solicita navegación al router conservando edición y resultados existentes."""
@@ -116,18 +133,29 @@ class Dashboard:
         """Recibe el evento del editor; el tamaño aplicado proviene de su lista guardada."""
         self.invalidate()
 
+    def change_crossover(self, e=None):
+        """Actualiza porcentaje de cruza visible; el motor recibirá este valor dividido entre 100."""
+        self.crossover_label.value = f"Cruza · {self.crossover.value:.0f} %"
+        self.invalidate()
+
     def change_mutation(self, e=None):
         """Actualiza porcentaje visible; el motor recibirá este valor dividido entre 100."""
         self.mutation_label.value = f"Mutación · {self.mutation.value:.0f} %"
         self.invalidate()
 
     def change_objective(self, e=None):
-        """Adapta dimensiones y límites del editor; vacía individuos del esquema anterior."""
+        """Adapta dimensiones y límites del editor; genera automáticamente población para el nuevo dominio."""
+        self._sync_dimension_control()
         objective = get_objective(self.function.value, int(self.dimensions.value))
         self.editor.set_schema(objective.dimensions, objective.labels, objective.bounds, notify=False)
+        try:
+            count = max(2, min(200, int(self.size.value)))
+        except (ValueError, TypeError):
+            count = 20
+        self.editor.set_individuals(initial_population(count, objective), notify=False)
         self.formula.value = objective.expression+"\n"+" · ".join(f"{label} ∈ [{low:g}, {high:g}]" for label, (low, high) in zip(objective.labels, objective.bounds))
         self.invalidate()
-        self.message.value = "La función o las variables cambiaron. Agrega individuos o genera una nueva población."
+        self.message.value = "Función cambiada: se generó una población inicial en el nuevo dominio. Pulsa Ver resultados."
         self.page.update()
 
     def configure(self, e=None):
@@ -153,7 +181,14 @@ class Dashboard:
             raise ValueError("Guarda el individuo pendiente o cancela sus campos antes de ver resultados.")
         objective = get_objective(self.function.value, int(self.dimensions.value))
         population = validate_population(self.editor.individuals, objective)
-        return AlgorithmConfig(population, objective, self.mutation.value/100, self.selection.value, total)
+        return AlgorithmConfig(
+            population=population,
+            objective=objective,
+            mutation_rate=self.mutation.value / 100,
+            selection=self.selection.value,
+            generations=total,
+            crossover_rate=self.crossover.value / 100,
+        )
 
     async def apply(self, e=None):
         """Ejecuta el motor fuera del hilo de interfaz, valida la salida y abre resultados."""
@@ -172,7 +207,6 @@ class Dashboard:
         self.message.value, self.message.color = "Procesando la configuración…", MUTED
         self.page.update()
         try:
-            # PUNTO DE INTEGRACIÓN: el motor inyectado recibe todos los parámetros.
             snapshots = await asyncio.to_thread(self.engine.run, config)
             validate_generations(snapshots, config)
             if token != self.revision:
@@ -180,10 +214,19 @@ class Dashboard:
                 return
             self.config, self.snapshots = config, snapshots
             self.total, self.index = config.generations, 0
-            self.history = [min(generation.scores) for generation in snapshots]
+            maximize = config.objective.maximize
+            self.history = [
+                (max(generation.scores) if maximize else min(generation.scores))
+                for generation in snapshots
+            ]
             self.timeline.max, self.timeline.divisions = self.total, self.total
-            self.message.value = "Vista de demostración: selección y mutación no modifican el recorrido." if self.is_demo else "Resultados del motor conectado."
-            self.result_summary.value = f"{config.objective.name} · {config.objective.dimensions} variables · {len(config.population)} individuos · {config.selection.capitalize()} · Mutación {config.mutation_rate:.0%}"
+            self.message.value = "Vista de demostración: selección y mutación no modifican el recorrido." if self.is_demo else "Resultados del algoritmo genético."
+            mode_str = "Maximización" if maximize else "Minimización"
+            self.result_summary.value = (
+                f"{config.objective.name} ({mode_str}) · {config.objective.dimensions}D · "
+                f"{len(config.population)} individuos · Selección: {config.selection.capitalize()} · "
+                f"Cruza: {config.crossover_rate:.0%} · Mutación: {config.mutation_rate:.0%}"
+            )
             self.render()
             self.menu.set_enabled("results", True)
             self.show_view("results")
@@ -201,11 +244,12 @@ class Dashboard:
         generation = self.snapshots[self.index]
         objective = self.config.objective
         values, scores = generation.population, generation.scores
-        best = min(range(len(values)), key=lambda i: scores[i])
-        metrics = [("Generación", f"{self.index} / {self.total}"), ("Mejor evaluación", f"{scores[best]:.5g}"), ("Promedio", f"{sum(scores)/len(scores):.5g}")]
+        best = self._best_index(scores, objective.maximize)
+        opt_label = "Mejor evaluación (Máx)" if objective.maximize else "Mejor evaluación (Mín)"
+        metrics = [("Generación", f"{self.index} / {self.total}"), (opt_label, f"{scores[best]:.5g}"), ("Promedio", f"{sum(scores)/len(scores):.5g}")]
         self.metrics.controls = [ft.Container(content=ft.Column([ft.Text(label, size=12, color=MUTED), ft.Text(value, size=24, weight=ft.FontWeight.W_600, color=TEXT)], spacing=6), bgcolor="#FFFFFF", padding=20, border_radius=12, border=ft.Border.all(1, BORDER), col={"xs":12, "sm":4}) for label, value in metrics]
         self._render_function(generation, best)
-        self.history_chart.set_image(plot(list(enumerate(self.history)), [(self.index, self.history[self.index])], xlabel="Generación"))
+        self.history_chart.set_image(plot(list(enumerate(self.history)), [(self.index, self.history[self.index])], xlabel="Generación", best_dot=(self.index, self.history[self.index])))
         self.table.controls = [ft.Container(content=ft.Column([ft.Row([ft.Text(f"Individuo {i+1:02d}", size=13, color=TEXT), ft.Text("Mejor" if i == best else "", size=12, color=ACCENT)]), ft.Text(" · ".join(f"{label} = {v:.5g}" for label, v in zip(objective.labels, individual)), size=12, color=MUTED), ft.Text(f"f = {scores[i]:.5g}", size=13, color=TEXT)], spacing=5), padding=12, bgcolor="#E8EEF5" if i == best else SOFT, border_radius=10) for i, individual in enumerate(values)]
         self.timeline.value, self.progress.value = self.index, self.index/self.total
         self.page.update()
@@ -219,7 +263,9 @@ class Dashboard:
         if objective.dimensions == 1:
             lower, upper = objective.bounds[0]
             curve = [(lower+(upper-lower)*i/300, 0) for i in range(301)]
-            chart = plot([(x, objective.evaluate((x,))) for x, _ in curve], [(v[0], score) for v, score in zip(values, scores)])
+            dots = [(v[0], score) for v, score in zip(values, scores)]
+            best_dot = (values[best][0], scores[best])
+            chart = plot([(x, objective.evaluate((x,))) for x, _ in curve], dots, best_dot=best_dot)
         elif self.chart_mode.value == "surface":
             chart = surface3d(objective, values, best, self.elevation.value, self.azimuth.value)
         else:
@@ -231,7 +277,7 @@ class Dashboard:
         if not self.snapshots:
             return
         generation = self.snapshots[self.index]
-        best = min(range(len(generation.scores)), key=lambda i: generation.scores[i])
+        best = self._best_index(generation.scores, self.config.objective.maximize)
         self._render_function(generation, best)
         self.page.update()
 

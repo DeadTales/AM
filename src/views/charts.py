@@ -47,12 +47,20 @@ def _png(figure: Figure) -> bytes:
     return result
 
 
-def plot(curve: list[tuple[float, float]], dots: list[tuple[float, float]], color: str = ACCENT, xlabel: str = "x") -> bytes:
+def plot(
+    curve: list[tuple[float, float]],
+    dots: list[tuple[float, float]],
+    color: str = ACCENT,
+    xlabel: str = "x",
+    best_dot: tuple[float, float] | None = None,
+) -> bytes:
     """Dibuja curva y puntos en un PNG; xlabel nombra el eje horizontal."""
     figure, axes = _figure()
     axes.plot(*zip(*curve), color=color, linewidth=1.8)
     if dots:
-        axes.scatter(*zip(*dots), c="#A6633D", s=26, edgecolors="white", linewidths=0.7, zorder=3)
+        axes.scatter(*zip(*dots), c="#243247", s=26, edgecolors="white", linewidths=0.7, zorder=3)
+    if best_dot is not None:
+        axes.scatter([best_dot[0]], [best_dot[1]], c="#9C5837", s=70, edgecolors="white", linewidths=1.2, zorder=4)
     axes.grid(color=BORDER, linewidth=0.6, alpha=0.7)
     axes.set_xlabel(xlabel, fontsize=10, color=MUTED)
     axes.set_ylabel("Evaluación", fontsize=10, color=MUTED)
@@ -62,14 +70,14 @@ def plot(curve: list[tuple[float, float]], dots: list[tuple[float, float]], colo
 def heatmap(objective: Objective, population, best: int) -> bytes:
     """Muestra f(x,y) con color e individuos superpuestos, destacando best."""
     (xmin, xmax), (ymin, ymax) = objective.bounds
-    resolution = 40
+    resolution = 50
     xs = [xmin+(xmax-xmin)*(i+0.5)/resolution for i in range(resolution)]
     ys = [ymin+(ymax-ymin)*(j+0.5)/resolution for j in range(resolution)]
     values = [[objective.evaluate((x, y)) for x in xs] for y in ys]
     figure, axes = _figure(340)
     palette = LinearSegmentedColormap.from_list("evolution", ["#EDF2F7", "#53789B"])
     surface = axes.imshow(values, extent=(xmin, xmax, ymin, ymax), origin="lower", aspect="auto", cmap=palette)
-    axes.scatter(*zip(*population), c="#243247", s=22, edgecolors="white", linewidths=0.7)
+    axes.scatter(*zip(*population), c="#243247", s=22, edgecolors="white", linewidths=0.7, zorder=3)
     axes.scatter(*population[best], c="#9C5837", s=65, edgecolors="white", linewidths=1.2, zorder=4)
     axes.set_xlabel(objective.labels[0], fontsize=10, color=MUTED)
     axes.set_ylabel(objective.labels[1], fontsize=10, color=MUTED)

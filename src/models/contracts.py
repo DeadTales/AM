@@ -14,6 +14,7 @@ class Objective:
     labels: tuple[str, ...]
     bounds: tuple[tuple[float, float], ...]
     evaluate: Callable[[Individual], float]
+    maximize: bool = False
 
     @property
     def dimensions(self) -> int:
@@ -23,12 +24,13 @@ class Objective:
 
 @dataclass(frozen=True)
 class AlgorithmConfig:
-    """Entrada al motor: población, objetivo, probabilidad [0,1], selección e iteraciones."""
+    """Entrada al motor: población, objetivo, probabilidades [0,1], selección e iteraciones."""
     population: tuple[Individual, ...]
     objective: Objective
     mutation_rate: float
     selection: str
     generations: int
+    crossover_rate: float = 0.8
 
 
 @dataclass(frozen=True)
