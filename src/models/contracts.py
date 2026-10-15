@@ -1,7 +1,7 @@
 """Contratos independientes de Flet para conectar cualquier motor genético."""
 from dataclasses import dataclass
 import math
-from typing import Callable, Protocol
+from typing import Callable
 
 Individual = tuple[float, ...]
 
@@ -39,15 +39,6 @@ class Generation:
     index: int
     population: tuple[Individual, ...]
     scores: tuple[float, ...]
-
-
-class EvolutionEngine(Protocol):
-    """Implementar run(config)"""
-
-    def run(self, config: AlgorithmConfig) -> list[Generation]:
-        """Devuelve generaciones 0..config.generations; 0 es la población inicial."""
-        ...
-
 
 def validate_population(population, objective: Objective) -> tuple[Individual, ...]:
     """Normaliza vectores y rechaza cantidad, dimensión, valores o dominios inválidos."""

@@ -13,7 +13,7 @@ def initial_population(size: int, objective: Objective) -> list[Individual]:
 
 
 class DemoEngine:
-    """Implementación ilustrativa de EvolutionEngine que puedes reemplazar por tu motor."""
+    """Motor ilustrativo con run(config), disponible para pruebas de la interfaz."""
 
     def run(self, config: AlgorithmConfig) -> list[Generation]:
         """Interpola hacia un mínimo muestreado; selección y mutación no actúan."""

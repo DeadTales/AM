@@ -4,7 +4,7 @@ from models.contracts import AlgorithmConfig, Generation, Individual, Objective
 
 
 class GeneticEngine:
-    """Implementa selección, cruza, mutación y elitismo cumpliendo EvolutionEngine."""
+    """Implementa selección, cruza, mutación y elitismo mediante run(config)."""
 
     def __init__(self, seed: int | None = None):
         """Permite semilla opcional; si es None usa entropía del sistema."""

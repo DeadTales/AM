@@ -1,7 +1,8 @@
 """Vistas de configuración y resultados, independientes del motor de evolución."""
 import asyncio
 import flet as ft
-from models.contracts import AlgorithmConfig, EvolutionEngine, validate_generations, validate_population
+from models.contracts import AlgorithmConfig, validate_generations, validate_population
+from models.genetic_engine import GeneticEngine
 from models.demo_engine import DemoEngine, initial_population
 from models.objectives import FIXED_DIMENSIONS, FUNCTIONS, get_objective
 from views.charts import Chart, heatmap, plot, surface3d
@@ -14,10 +15,10 @@ from views.theme import ACCENT, BORDER, ERROR, MUTED, SOFT, TEXT, card, field
 class Dashboard:
     """Coordina configuración, ejecución del motor y navegación por resultados."""
 
-    def __init__(self, page: ft.Page, engine: EvolutionEngine | None = None):
-        """page aloja controles; engine implementa run(config), por defecto DemoEngine."""
+    def __init__(self, page: ft.Page, engine: GeneticEngine | DemoEngine | None = None):
+        """page aloja controles; engine ejecuta run(config), por defecto GeneticEngine."""
         self.page = page
-        self.engine = engine if engine is not None else DemoEngine()
+        self.engine = engine if engine is not None else GeneticEngine()
         self.index, self.total = 0, 40
         self.playing, self.busy, self.revision = False, False, 0
         self.snapshots = []
