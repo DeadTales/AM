@@ -15,3 +15,5 @@ __pycache__/
 
 # Documentos locales de la tarea
 Funciones_Simples_Complejas.pdf
+artifacts/
+documentation_staging/
