@@ -1,13 +1,12 @@
 """Punto de entrada de la aplicación de escritorio."""
 import flet as ft
-from views.dashboard import Dashboard
-from models.genetic_engine import GeneticEngine
+from views.application import OptimizationApp
 from views.theme import ACCENT, BACKGROUND
 
 
 def main(page: ft.Page):
     """Configura la ventana `page` y monta el panel con el motor genético conectado."""
-    page.title = "Evolución Lab · Algoritmos genéticos"
+    page.title = "Optimización Lab · Evolutivo y PSO"
     page.theme_mode = ft.ThemeMode.LIGHT
     page.theme = ft.Theme(color_scheme_seed=ACCENT)
     page.bgcolor = BACKGROUND
@@ -16,7 +15,7 @@ def main(page: ft.Page):
     page.window.height = 900
     page.window.min_width = 760
     page.window.min_height = 640
-    page.add(Dashboard(page, engine=GeneticEngine()).build())
+    page.add(OptimizationApp(page).build())
 
 
 if __name__ == "__main__":

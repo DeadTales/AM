@@ -40,6 +40,29 @@ class Generation:
     population: tuple[Individual, ...]
     scores: tuple[float, ...]
 
+
+@dataclass(frozen=True)
+class PSOConfig:
+    """Entrada PSO sin parámetros genéticos; generations representa iteraciones de movimiento."""
+    population: tuple[Individual, ...]
+    objective: Objective
+    generations: int
+    inertia: float = 0.7
+    cognitive: float = 1.5
+    social: float = 1.5
+    seed: int = 42
+
+    def validate(self) -> None:
+        """Exige posiciones válidas, 1–500 iteraciones y coeficientes finitos en rangos de la UI."""
+        validate_population(self.population, self.objective)
+        if not isinstance(self.generations, int) or not 1 <= self.generations <= 500:
+            raise ValueError("Las iteraciones deben ser enteros entre 1 y 500.")
+        for label, value, upper in (("w", self.inertia, 2), ("c1", self.cognitive, 4), ("c2", self.social, 4)):
+            if not math.isfinite(value) or not 0 <= value <= upper:
+                raise ValueError(f"{label} debe estar entre 0 y {upper}.")
+        if not isinstance(self.seed, int) or not 0 <= self.seed <= 2**32-1:
+            raise ValueError("La semilla debe ser un entero entre 0 y 4294967295.")
+
 def validate_population(population, objective: Objective) -> tuple[Individual, ...]:
     """Normaliza vectores y rechaza cantidad, dimensión, valores o dominios inválidos."""
     if not 2 <= len(population) <= 200:
@@ -59,7 +82,7 @@ def validate_population(population, objective: Objective) -> tuple[Individual, .
     return tuple(result)
 
 
-def validate_generations(generations: list[Generation], config: AlgorithmConfig) -> None:
+def validate_generations(generations: list[Generation], config: AlgorithmConfig | PSOConfig) -> None:
     """Verifica salida del motor antes de mostrarla, incluida la generación inicial."""
     if len(generations) != config.generations+1:
         raise ValueError("El motor debe devolver la generación 0 y todas las iteraciones solicitadas.")

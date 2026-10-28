@@ -1,4 +1,4 @@
-"""Menú reutilizable con indicador de vista activa y acción de volver."""
+"""Menú principal dedicado a seleccionar el algoritmo de optimización."""
 from dataclasses import dataclass
 from typing import Callable
 import flet as ft
@@ -7,35 +7,29 @@ from views.theme import ACCENT, BORDER, MUTED, SOFT
 
 @dataclass(frozen=True)
 class MenuItem:
-    """route identifica la vista; label e icon definen su representación."""
+    """route identifica un algoritmo; label e icon definen su representación."""
     route: str
     label: str
     icon: ft.IconData
 
 
 class Menu(ft.Container):
-    """Presenta opciones; delega navegación sin conocer datos del algoritmo."""
+    """Selecciona algoritmos; la navegación interna pertenece al componente Submenu."""
 
-    def __init__(self, items: list[MenuItem], on_navigate: Callable[[str], object], on_back: Callable[[], object]):
-        """items define opciones; callbacks reciben ruta elegida o solicitud de volver."""
+    def __init__(self, items: list[MenuItem], on_navigate: Callable[[str], object]):
+        """items define algoritmos; on_navigate recibe la clave del algoritmo elegido."""
         super().__init__(padding=12, bgcolor=SOFT, border=ft.Border.all(1, BORDER), border_radius=12)
         self.buttons = {}
-        self.back_button = ft.IconButton(icon=ft.Icons.ARROW_BACK, tooltip="Volver a la vista anterior", disabled=True, on_click=lambda e: on_back())
         for item in items:
             if item.route in self.buttons:
                 raise ValueError(f"Opción duplicada: {item.route}")
             self.buttons[item.route] = ft.Button(item.label, icon=item.icon, elevation=0, on_click=lambda e, route=item.route: on_navigate(route))
-        self.content = ft.Row([self.back_button, *self.buttons.values()], spacing=10, wrap=True)
+        self.content = ft.Row([ft.Text("Algoritmo", size=13, color=MUTED), *self.buttons.values()], spacing=12, wrap=True)
 
-    def set_enabled(self, route: str, enabled: bool):
-        """Habilita o bloquea una opción; el router también debe validar su acceso."""
-        self.buttons[route].disabled = not enabled
-
-    def select(self, route: str, can_go_back: bool = False):
-        """Destaca route sin deshabilitarla; actualiza disponibilidad del botón Volver."""
+    def select(self, route: str):
+        """Destaca el algoritmo activo sin modificar sus parámetros ni su submenú."""
         if route not in self.buttons:
             raise ValueError(f"Opción desconocida: {route}")
         for name, button in self.buttons.items():
             button.bgcolor = ACCENT if name == route else SOFT
             button.color = "#FFFFFF" if name == route else MUTED
-        self.back_button.disabled = not can_go_back
