@@ -3,6 +3,7 @@ import asyncio
 import flet as ft
 from models.contracts import AlgorithmConfig, PSOConfig, validate_generations, validate_population
 from models.pso_demo_engine import PSODemoEngine
+from models.pso_engine import PSOEngine
 from models.pso_experiments import best_history, comparable, compare_parameters, make_trial
 from models.genetic_engine import GeneticEngine
 from models.demo_engine import DemoEngine, initial_population
@@ -26,7 +27,7 @@ class Dashboard:
         self.algorithm = algorithm
         self.is_pso = algorithm == "pso"
         self.step_label = "Iteración" if self.is_pso else "Generación"
-        self.engine = engine if engine is not None else (PSODemoEngine() if self.is_pso else GeneticEngine())
+        self.engine = engine if engine is not None else (PSOEngine() if self.is_pso else GeneticEngine())
         self.trials = []
         self.comparison_batch = 0
         self.index, self.total = 0, 40
