@@ -1,0 +1,16 @@
+{
+  "descripcion": "Viajante (TSP): 10 ciudades en un plano de 0 a 100. La ruta inicia y termina en la ciudad 'inicio'.",
+  "inicio": "A",
+  "ciudades": [
+    {"nombre": "A", "x": 20, "y": 80},
+    {"nombre": "B", "x": 45, "y": 92},
+    {"nombre": "C", "x": 75, "y": 85},
+    {"nombre": "D", "x": 95, "y": 60},
+    {"nombre": "E", "x": 80, "y": 30},
+    {"nombre": "F", "x": 60, "y": 10},
+    {"nombre": "G", "x": 30, "y": 15},
+    {"nombre": "H", "x": 8, "y": 40},
+    {"nombre": "I", "x": 40, "y": 50},
+    {"nombre": "J", "x": 65, "y": 55}
+  ]
+}
