@@ -33,6 +33,11 @@ def check_simulation():
         assert all(g.scores == tuple(objective.evaluate(p) for p in g.population) for g in snapshots)
         history = best_history(snapshots, objective.maximize)
         assert all(b >= a if objective.maximize else b <= a for a, b in zip(history, history[1:]))
+        # Lineal con pendiente (−2x+5) se excluye de la prueba de sensibilidad: su máximo
+        # está en el borde x=0 y todas las partículas avanzan hacia él con la velocidad
+        # limitada al máximo (20 % del dominio), así que w, c1 y c2 no cambian el recorrido.
+        if key == "linear_1d":
+            continue
         for changed in (replace(config, inertia=0.2), replace(config, cognitive=3), replace(config, social=0.2)):
             assert engine.run(changed)[-1].population != snapshots[-1].population
     objective = Objective("Cuadrado", "x²", ("x",), ((-10,10),), lambda v:v[0]**2)
@@ -54,7 +59,7 @@ def check_simulation():
         else:
             raise AssertionError("Se aceptó una configuración inválida")
     validate_generations(PSOEngine().run(config), config)
-    print("Simulación: cinco funciones, ecuación, semilla, max/min y coeficientes verificados.")
+    print("Simulación: quince funciones, ecuación, semilla, max/min y coeficientes verificados.")
 
 
 def check_experiments():
