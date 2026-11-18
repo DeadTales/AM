@@ -1,7 +1,9 @@
 """Menú de algoritmos: cada panel conserva su propia configuración y resultados."""
 import flet as ft
+from models.ais_engine import AISEngine
 from models.genetic_engine import GeneticEngine
 from models.pso_demo_engine import PSODemoEngine
+from views.ais_panel import AISPanel
 from views.dashboard import Dashboard
 from views.menu import Menu, MenuItem
 from views.router import ViewRouter
@@ -9,7 +11,7 @@ from views.theme import ACCENT, TEXT
 
 
 class OptimizationApp:
-    """Aloja el evolutivo existente y una simulación PSO en vistas independientes."""
+    """Aloja Evolutivo, PSO y AIS en vistas independientes."""
 
     def __init__(self, page: ft.Page):
         """Para conectar PSO real, sustituye únicamente PSODemoEngine() por PSOEngine()."""
@@ -19,11 +21,16 @@ class OptimizationApp:
             # PUNTO DE CONEXIÓN: from models.pso_engine import PSOEngine
             # Cambiar engine=PSODemoEngine() por engine=PSOEngine() tras implementarlo.
             "pso": Dashboard(page, engine=PSODemoEngine(), algorithm="pso"),
+            "ais": AISPanel(page, engine=AISEngine()),
         }
         self.active = "genetic"
         self.router = ViewRouter({key: panel.build(show_header=False) for key, panel in self.panels.items()}, initial=self.active, on_change=self.change_algorithm)
         self.router.outlet.expand = True
-        self.menu = Menu([MenuItem("genetic", "Evolutivo", ft.Icons.SCIENCE_OUTLINED), MenuItem("pso", "Partículas · PSO", ft.Icons.GRAIN)], on_navigate=self.router.go)
+        self.menu = Menu([
+            MenuItem("genetic", "Evolutivo", ft.Icons.SCIENCE_OUTLINED),
+            MenuItem("pso", "Partículas · PSO", ft.Icons.GRAIN),
+            MenuItem("ais", "AIS · Selección clonal", ft.Icons.BIOTECH),
+        ], on_navigate=self.router.go)
         self.menu.select(self.active)
 
     def change_algorithm(self, name: str):

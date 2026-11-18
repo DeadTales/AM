@@ -91,7 +91,7 @@ async def check_interface():
     app.build()
     genetic, pso = app.panels["genetic"], app.panels["pso"]
     assert isinstance(app.menu, Menu) and not isinstance(app.menu, Submenu)
-    assert set(app.menu.buttons) == {"genetic", "pso"}
+    assert {"genetic", "pso"} <= app.menu.buttons.keys()
     assert isinstance(genetic.submenu, Submenu) and isinstance(pso.submenu, Submenu)
     assert set(genetic.submenu.buttons) == {"config", "results"}
     assert set(pso.submenu.buttons) == {"config", "results", "comparison"}
