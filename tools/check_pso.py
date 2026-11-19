@@ -53,12 +53,7 @@ def check_simulation():
             pass
         else:
             raise AssertionError("Se aceptó una configuración inválida")
-    try:
-        PSOEngine().run(config)
-    except NotImplementedError:
-        pass
-    else:
-        raise AssertionError("El punto de integración no debe fingir un PSO definitivo")
+    validate_generations(PSOEngine().run(config), config)
     print("Simulación: cinco funciones, ecuación, semilla, max/min y coeficientes verificados.")
 
 
@@ -103,7 +98,7 @@ async def check_interface():
     await pso.apply()
     assert len(pso.snapshots) == 5 and pso.config.inertia == 0.9
     assert pso.config.objective.maximize and pso.history[-1] >= pso.history[0]
-    assert "simulación" in pso.message.value
+    assert "PSO" in pso.message.value
     app.menu.buttons["pso"].on_click(None)
     pso.submenu.back_button.on_click(None)
     assert app.active == "pso" and pso.router.active == "config"

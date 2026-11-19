@@ -2,7 +2,7 @@
 import flet as ft
 from models.ais_engine import AISEngine
 from models.genetic_engine import GeneticEngine
-from models.pso_demo_engine import PSODemoEngine
+from models.pso_engine import PSOEngine
 from views.ais_panel import AISPanel
 from views.dashboard import Dashboard
 from views.menu import Menu, MenuItem
@@ -14,13 +14,10 @@ class OptimizationApp:
     """Aloja Evolutivo, PSO y AIS en vistas independientes."""
 
     def __init__(self, page: ft.Page):
-        """Para conectar PSO real, sustituye únicamente PSODemoEngine() por PSOEngine()."""
         self.page = page
         self.panels = {
             "genetic": Dashboard(page, engine=GeneticEngine(), algorithm="genetic"),
-            # PUNTO DE CONEXIÓN: from models.pso_engine import PSOEngine
-            # Cambiar engine=PSODemoEngine() por engine=PSOEngine() tras implementarlo.
-            "pso": Dashboard(page, engine=PSODemoEngine(), algorithm="pso"),
+            "pso": Dashboard(page, engine=PSOEngine(), algorithm="pso"),
             "ais": AISPanel(page, engine=AISEngine()),
         }
         self.active = "genetic"
