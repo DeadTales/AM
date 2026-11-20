@@ -96,3 +96,32 @@ Se hace uso de dos componentes independientes:
 ## Referencias
 
 Referencias oficiales: [Flet](https://flet.dev/docs/), [Slider](https://flet.dev/docs/controls/slider/), [Dropdown](https://flet.dev/docs/controls/dropdown/).
+
+## Colonia de Hormigas (ACO) · problemas categóricos
+
+```
+src/models/aco_engine.py     ← Algoritmo ACO (Ant System con refuerzo elitista)
+src/models/categorical.py    ← Definición de TSP y asignación (restricciones y costo)
+data/tsp.json                ← Ciudades y coordenadas
+data/asignacion.json         ← Costos, demandas y capacidades
+examples/probar_aco.py       ← Ejecuta ambos ejemplos
+tools/check_aco.py           ← Pruebas (compara contra el óptimo exacto)
+```
+
+La solución es una tupla de enteros:
+
+* **Viajante (TSP)**: permutación de ciudades que inicia en la ciudad `inicio`; el regreso al inicio es implícito y se suma en la distancia total. Ejemplo de 10 ciudades en `data/tsp.json` (`load_tsp()`); coordenadas editables en el JSON o creando `TSPProblem(coordinates=..., names=...)`.
+* **Asignación de tareas**: `assignment[i]` es el recurso de la tarea `i`. Se minimiza el costo total respetando `Σ demanda ≤ capacidad` por recurso; las soluciones infactibles reciben una penalización mayor que cualquier costo factible. Ejemplo de 20 tareas y 5 recursos en `data/asignacion.json` (`load_assignment()`), con costos, demandas y capacidades editables.
+
+Parámetros (`ACOConfig` en `contracts.py`): hormigas (2–200), iteraciones (1–500), feromona inicial τ0 (0–1000; 0 = automática), α (0–10), β (0–10), ρ (0.01–0.99), Q (0.01–1000), paciencia de convergencia (0–500; 0 = desactivada) y semilla. La etiqueta, explicación, tipo, rango y valor inicial de cada uno están en `ACO_PARAMETERS` para mostrarlos en la interfaz. Ambos problemas son de minimización.
+
+Motivos de término (`engine.stop_reason`): límite de iteraciones, convergencia anticipada (el mejor costo no mejora durante `patience` iteraciones) o detención por el usuario.
+
+Ejemplo con los datos de `data/` (solución, costo e historial del mejor costo desde la iteración 0): `python examples/probar_aco.py`. Pruebas: `python tools/check_aco.py`.
+
+Para conectar ACO a la interfaz (persona 4):
+
+1. Construir el problema con `load_tsp()` / `load_assignment()` (o `get_problem("tsp" | "assignment")`), o con los datos editados, y llamar `problem.validate()` para mostrar errores.
+2. `ACOEngine().run(ACOConfig(problem, ants, generations, alpha, beta, rho, q, seed, initial_pheromone, patience), should_stop=...)` devuelve `list[Generation]`: iteración 0 hasta N (o menos si hubo convergencia anticipada o detención), una solución y su costo por hormiga. `should_stop` es opcional (botón Detener) y `engine.stop_reason` da el motivo de término.
+3. `best_solution(generations)` → (vector, costo, iteración) y `best_history(generations)` → curva de convergencia. `problem.describe(vector)` da el texto legible; en TSP `problem.coordinates` y `problem.closed_route(ruta)` sirven para dibujar el recorrido, y en asignación `problem.loads(vector)` muestra la carga por recurso.
+4. Usar `validate_aco_generations` en lugar de `validate_generations`, que está pensado para vectores continuos.
