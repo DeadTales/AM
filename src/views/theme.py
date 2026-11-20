@@ -13,6 +13,7 @@ ERROR = "#A33737"
 
 def field(label: str, value: str = "", **kwargs) -> ft.TextField:
     """Campo uniforme; kwargs permite pasar eventos, anchura y otras opciones de Flet."""
+    kwargs.setdefault("helper_max_lines", 3)
     return ft.TextField(label=label, value=value, text_size=14, filled=True, fill_color=SOFT, border=ft.OutlineInputBorder(border_radius=10, side=ft.BorderSide(color=BORDER)), **kwargs)
 
 

@@ -11,7 +11,7 @@ class PSODemoEngine:
         """Simula velocidad, memoria personal y atracción social con semilla reproducible.
 
         v = w*v + c1*r1*(pbest-x) + c2*r2*(gbest-x), x = x+v.
-        Velocidad limitada al 20 % del dominio por eje. Al chocar con una cota,
+        Velocidad limitada según config.velocity_limit (20 % inicialmente). Al chocar con una cota,
         se fija la coordenada en esa cota y se anula su velocidad.
         """
         config.validate()
@@ -32,7 +32,7 @@ class PSODemoEngine:
                 for d, (x, (lo, hi)) in enumerate(zip(vector, objective.bounds)):
                     r1, r2 = rng.random(), rng.random()
                     velocity = config.inertia*velocities[i][d] + config.cognitive*r1*(personal_positions[i][d]-x) + config.social*r2*(global_best[d]-x)
-                    limit = 0.2*(hi-lo)
+                    limit = config.velocity_limit*(hi-lo)
                     velocity = max(-limit, min(limit, velocity))
                     candidate = x+velocity
                     coordinate = max(lo, min(hi, candidate))

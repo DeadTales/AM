@@ -1,98 +1,132 @@
 # Evolución Lab
 
-Interfaz de escritorio en español con Flet 1.0.4, tema claro y vistas separadas de configuración y resultados. Incluye editor de población vectorial, parámetros de evolución, gráficas con zoom y reproducción de generaciones.
-
-El menú superior permite cambiar entre **Evolutivo** y **Partículas · PSO**. Cada algoritmo conserva sus parámetros, individuos y resultados. Para partículas se hace uso de una **simulación didáctica**, mientras otra persona implementa el motor definitivo.
+Aplicación de escritorio en español con Flet 1.0.4 para configurar problemas de optimización, ejecutar cinco algoritmos reales y examinar sus soluciones e historiales. Primero se elige el tipo de problema; el menú muestra los algoritmos compatibles y conserva la última selección de cada tipo.
 
 ## Instalación y ejecución
 
+Desde la carpeta del proyecto, con Python 3.13 para Windows:
+
 ```powershell
-& 'venv\Scripts\Activate.ps1'
-python -m pip install -r requirements.txt
-python src/main.py
+py -3.13 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe src\main.py
 ```
 
-**NOTA:** la ruta del entorno virtual depende de donde este el tuyo.
+Después de instalar las dependencias basta con el último comando. No se necesita activar el entorno. Los ejemplos se encuentran por su ruta dentro del proyecto, aunque se ejecute la aplicación desde otra carpeta.
 
-## Funciones de prueba
+## Representaciones y combinaciones disponibles
 
-Se hace uso de funciones provisionales para poder hacer una versión de prueba de formularoo y procesos, asi como simular el comportamiento en la muestra de gráficos, dichas funciones de prueba son:
+| Representación | Problemas | Algoritmos conectados |
+| --- | --- | --- |
+| Continua: vectores de números reales | Sphere, Rastrigin, Ackley, Rosenbrock y otras funciones del catálogo | GA, PSO y DE |
+| Binaria: vectores de ceros y unos | OneMax y mochila 0/1 | AIS |
+| Discreta: permutaciones o índices de categorías | TSP y asignación de tareas a recursos | ACO |
 
-* Seno oscilante (1D, maximización).
-* Exponencial simple (1D, maximización).
-* Ackley.
-* Eggholder.
-* Rosenbrock.
+Cada panel ofrece los problemas que admite su motor. Las otras combinaciones no están implementadas. TSP y asignación minimizan sus costos; OneMax y mochila maximizan su beneficio por definición. Los problemas continuos permiten elegir el sentido de optimización.
 
-Las tres últimas funciones son de dos variables y orientadas a minimización. Ambos algoritmos usan el mismo registro en `src/models/objectives.py`.
+## Configuración dinámica y nombres de los parámetros
 
-## Uso de la interfaz
+Todos los controles tienen etiquetas del algoritmo seleccionado, ayuda visible o contextual y validación de tipo o rango. El tamaño utilizado se corresponde con la lista de individuos guardada: al cambiar la cantidad se debe pulsar **Generar población**; agregar o quitar individuos actualiza esa cantidad.
 
-### Población
+| Algoritmo | Parámetros disponibles |
+| --- | --- |
+| GA | Tamaño de población, tasa de cruza, tasa de mutación, método de selección, número de generaciones y semilla |
+| ACO | Número de hormigas, feromona inicial, evaporación, influencia de feromona, influencia heurística, número de iteraciones, depósito Q, paciencia y semilla |
+| PSO | Número de partículas, coeficientes cognitivo y social, inercia, límites de velocidad, número de iteraciones y semilla |
+| AIS | Número de anticuerpos, tasa de clonación, tasa de mutación, selección clonal, máximo de clones por anticuerpo, fracción de renovación, número de iteraciones y semilla |
+| DE | Tamaño de población, factor de mutación, tasa de cruza, estrategia de selección / variante, número de generaciones y semilla |
 
-Selecciona función y número de variables. **Generar población** crea una muestra reproducible; la cantidad del generador no te obliga a conservar dicho tamaño o individuos, es decir, se pueden agregar, quitar y/o editar. Ingresa una coordenada por campo y pulsa **Agregar individuo**. Los botones de cada fila permiten editar o eliminar. **Guardar cambios** confirma una edición y **Cancelar edición** descarta el formulario pendiente. Pulsa **Ver resultados** para usar la lista guardada. Cambiar función o variables vacía la lista porque cambian sus etiquetas o dominio.
+GA conserva al mejor candidato y utiliza cruza BLX con α=0.25 y mutación gaussiana con σ=10 % del intervalo. La selección de padres puede ser torneo, ruleta o elitista. PSO es global-best: las velocidades iniciales se generan uniformemente en ±5 % del intervalo y su límite de movimiento es configurable por porcentaje (20 % inicialmente). DE admite rand/1/bin y best/1/bin con cruza binomial y reemplazo voraz.
 
-### Navegación
+## Problemas continuos
 
-El **Menú** permite cambiar de algoritmo. El **Submenú** permite alternar entre Configuración y Simulación / Resultados; su flecha **Volver** recorre las etapas visitadas del algoritmo actual. Navegar conserva parámetros, ediciones pendientes y resultados, y pausa la reproducción. Resultados se habilita después de aplicar una configuración válida.
+GA, PSO y DE comparten la selección de función, la dimensión, el control **Minimizar / Maximizar** y un par de límites por variable. Los límites deben ser números finitos, con mínimo menor que máximo. El sentido elegido cambia la comparación del motor y queda registrado en el resumen y en las comparaciones PSO.
 
-### Gráficas
+Sphere, Schwefel y Griewank admiten entre 1 y 10 variables. Se conservan las variantes originales 1D o 2D de las otras funciones; el selector muestra su dimensión fija. La fórmula y el dominio se muestran en la configuración.
 
-Para funciones de dos variables, Resultados ofrece **Superficie 3D** (predeterminada) y **Mapa de calor**. La superficie representa `(x, y, f(x,y))`, incluidos los individuos y el mejor destacado. Los sliders **Giro horizontal** e **Inclinación** cambian la cámara al soltarlos; zoom y arrastre amplían o desplazan la imagen, mientras que la rotación se controla con esos sliders. Este comportamiento no cambia la dimensión del individuo ni los parámetros del algoritmo.
+**Aplicar límites y regenerar población** crea individuos dentro de los nuevos intervalos. **Generar población** hace lo mismo con la cantidad indicada. También se pueden agregar, editar o eliminar individuos. Si un cambio de límites deja individuos fuera del dominio, se informa el error antes de ejecutar y se puede regenerar la población o corregirla manualmente. No se descartan silenciosamente los datos por una entrada inválida.
 
-## Comportamiento de la simulación
+En resultados se muestran el sentido y los límites realmente utilizados. Las ejecuciones 1D ofrecen una curva; las 2D, superficie o mapa de calor. Para más variables se dibujan las coordenadas de los individuos y los límites, destacando el mejor vector. La convergencia conserva el historial real desde la generación 0 y se puede recorrer con el deslizador o reproducir.
 
-El recorrido es una interpolación ilustrativa hacia un mínimo muestreado, no un algoritmo genético. Selección y mutación no se utilizan en esta simulación, pero se definen para la integración posterior. El historial muestra el recorrido completo previsto; un punto marca la generación visible. La generación 0 es la población inicial.
+La lista de resultados coloca primero **Mejor encontrado**, con su vector, evaluación e iteración de origen. Después presenta los individuos de la iteración seleccionada ordenados de mejor a peor según el sentido. El orden de los datos del motor se conserva. En PSO, el primer vector puede provenir de una iteración anterior: se muestra el récord histórico real, aunque las partículas actuales se hayan alejado de él. Al terminar se abre la última iteración disponible.
 
-Este apartado describe `DemoEngine`, conservado como ejemplo. El menú Evolutivo sigue usando `GeneticEngine`. La simulación de partículas está en `src/models/pso_demo_engine.py`; sí actualiza velocidades y memorias personales/sociales para observar el efecto de los parámetros, y se identifica como simulación en la interfaz y exportaciones.
+Las implementaciones están en `src/models/genetic_engine.py`, `pso_engine.py` y `de_engine.py`. `DemoEngine` y `PSODemoEngine` se conservan como ejemplos y pruebas; el menú conecta los motores reales.
 
-## Simulación de partículas (PSO)
+## Problemas binarios
 
-En **Partículas · PSO** se definen inercia **w**, coeficiente cognitivo **c1**, coeficiente social **c2**, semilla e iteraciones. No se usan selección, cruza ni mutación. Se conservan las mismas funciones, editor de posiciones, gráficas 1D/2D/3D y reproducción del recorrido.
+AIS utiliza selección clonal, clonación, hipermutación y conservación de los mejores candidatos.
 
-Cada ejecución registra una prueba. **Comparar pruebas → Comparar w, c1 y c2** genera una base y hasta seis variantes, cambiando un coeficiente a la vez. Se mantienen posiciones iniciales, función, dominio, número de partículas, semilla e iteraciones. La gráfica muestra mejor valor encontrado hasta cada paso y dispersión del enjambre; se pueden agregar observaciones y exportar **CSV y JSON** en `artifacts/pso_comparisons`. Los registros quedan en memoria hasta cerrar la app; exporta lo que quieras conservar.
+La selección clonal configura la fracción de anticuerpos de mayor afinidad que se clonan (0.25 inicialmente). El número de clones disminuye con el rango: `max(1, int(max_clones * tasa_clonación) // rango)`; una tasa de clonación 0 desactiva los clones. La tasa de mutación vacía utiliza `1 / longitud` como base; si se especifica un valor de 0 a 1, se usa como base. La probabilidad por bit es `min(1, base * (1 + 3 * (1 - afinidad_relativa)))`. La fracción de renovación introduce candidatos aleatorios y siempre se conserva al menos un superviviente. Los valores iniciales mantienen la variante previa.
 
-Para conectar el algoritmo de partículas que hará otra persona:
+- **OneMax:** cada posición contiene 0 o 1. Se configura la longitud y se maximiza `Σ xᵢ`; todos los vectores de esa longitud son factibles.
+- **Mochila 0/1:** el bit `xᵢ` indica si se incluye el objeto i. Se editan pesos, valores y capacidad en la interfaz. Se maximiza `Σ valorᵢ·xᵢ`, sujeto a `Σ pesoᵢ·xᵢ ≤ capacidad`. Debe haber un valor por peso; los pesos son enteros positivos y los valores y la capacidad, enteros no negativos. El motor repara candidatos con sobrepeso antes de evaluarlos.
 
-1. Implementar `PSOEngine.run(config)` en **`src/models/pso_engine.py`**. Por ahora lanza `NotImplementedError` para indicar que está pendiente.
-2. Recibir `PSOConfig` de `contracts.py`: posiciones iniciales, objetivo, iteraciones, `inertia`, `cognitive`, `social` y `seed`.
-3. Devolver `list[Generation]` con paso 0 y todas las iteraciones, posiciones y evaluaciones; respetar límites, dirección max/min y tamaño de población.
-4. En **`src/views/application.py`**, importar `PSOEngine` y cambiar `engine=PSODemoEngine()` por `engine=PSOEngine()` en el panel `pso`.
+La interfaz cambia los campos al elegir el problema y valida los datos antes de ejecutar. Los resultados incluyen vector, valor, historial y la configuración aplicada, incluidos los pesos, valores y capacidad usados.
 
-Documentación detallada en `..\documentación\AM\10_pso_simulacion_e_integracion.ipynb`. Las pruebas ejecutadas con las cinco funciones y sus gráficas están en `11_pso_pruebas_y_analisis.ipynb`. Los resultados son de la simulación y una semilla, no conclusiones definitivas sobre el algoritmo final.
+## Problemas categóricos o discretos
 
-Comprobaciones: `python tools/check_pso.py`; prueba de escritorio con ventana temporal: `python tools/check_pso_desktop.py`. Generar documentación y ejemplos: `python tools/build_pso_notebooks.py`.
+El panel ACO permite editar las instancias sin modificar archivos. Los ejemplos originales de `data/` se usan como datos iniciales y pueden recuperarse con **Restaurar ejemplo del problema**. Cada formulario conserva sus datos al cambiar entre TSP y asignación. Al cambiar de problema se limpian los resultados, las gráficas, el historial y la exportación de la ejecución anterior.
 
-## Integración del algoritmo genetico
+### Viajante TSP
 
-Para conectar el algoritmo genetico:
+Cada categoría es una ciudad identificada por su índice y nombre. La solución es una permutación: visita cada ciudad una vez y regresa al inicio. El objetivo es minimizar la suma de distancias euclidianas de la ruta cerrada.
 
-1. Implementar `run(config)` en un motor para el algoritmo genetico. `AlgorithmConfig` contiene `population`, `objective`, `mutation_rate` entre 0 y 1, `selection` y `generations`.
-2. Devuelve `list[Generation]` con generaciones consecutivas desde 0. Cada una contiene `index`, `population` y `scores`. La generación 0 conserva la población inicial y cada individuo tiene una puntuación. En este contrato se mantiene el tamaño de población.
-3. En `src/views/application.py`, el panel `genetic` conecta el motor mediante `Dashboard(page, engine=GeneticEngine(), algorithm="genetic")`.
-4. Definir las funciones de la actividad, etiquetas y dominios en `src/models/objectives.py`.
+Se pueden agregar o quitar ciudades, cambiar sus nombres y coordenadas y elegir la ciudad inicial. Se admiten 3–60 ciudades, con coordenadas finitas y distintas y nombres completos y únicos. Los índices del selector inicial coinciden con los de las filas. La mejor ruta se muestra en texto y en una gráfica.
 
-El contrato está en `src/models/contracts.py`; el ejemplo reemplazable está en `src/models/demo_engine.py`. `Dashboard.apply()` llama al motor en un hilo mediante `asyncio.to_thread`, valida su salida y descarta el resultado si cambió la configuración durante el cálculo. Se necesita  implementar un mecanismo de frenado si esto pasa.
+### Asignación de tareas
 
-## Componentes de la interfaz
+La posición i del vector representa la tarea i. Su valor es el índice del recurso asignado, de modo que cada tarea tiene un único recurso. Se minimiza la suma de los costos seleccionados, respetando que la demanda acumulada por recurso no exceda su capacidad.
 
-### Menú y rutas
+Se configuran 1–60 tareas y 1–20 recursos. **Ajustar tabla** aplica sus cantidades y conserva los valores de las celdas que permanecen. Se editan nombres, demandas, capacidades y cada costo de la matriz. Las columnas R0, R1… corresponden a los índices de los recursos. Costos y demandas deben ser positivos; capacidades, no negativas.
 
-Se hace uso de dos componentes independientes:
+El modelo verifica tamaños, valores finitos, demanda total y que cada tarea quepa en algún recurso. Estas comprobaciones necesarias no garantizan por sí solas que exista una partición factible. Durante la búsqueda se penalizan los excesos de capacidad. Los resultados indican si la solución encontrada es factible y muestran sus cargas frente a las capacidades.
 
-* `src/views/menu.py`: `Menu` y `MenuItem` para cambiar entre **Evolutivo** y **Partículas · PSO**. El algoritmo activo se muestra con fondo azul.
-* `src/views/submenu.py`: `Submenu` y `SubmenuItem` para navegar entre **Configuración**, **Simulación / Resultados** y, en PSO, **Comparar pruebas**. Tiene un estilo más ligero y su botón **Volver** sólo recorre las etapas del algoritmo seleccionado.
+### Ejecución ACO
 
-`src/views/application.py` usa el menú principal y cada `Dashboard` tiene su propio `submenu`. Ambos utilizan routers independientes de `src/views/router.py`, por lo que cambiar de algoritmo conserva sus ediciones y la etapa en la que se quedó. Para añadir una etapa, registra su control en el router del panel y un `SubmenuItem` con el mismo identificador.
+Se configuran hormigas, iteraciones, feromona inicial, α, β, evaporación, depósito Q, paciencia y semilla. La variante es Ant System con refuerzo elitista. El motor se ejecuta en un hilo; **Detener** y cambiar de algoritmo solicitan su detención al completar la iteración actual. No se permite iniciar otra búsqueda hasta que el hilo termine.
 
-### Editor de población
+Se conservan la instancia y los parámetros realmente utilizados. Al terminar o detener se muestran mejor solución, costo, iteraciones completadas, motivo de término y curva del mejor costo acumulado desde la iteración 0. El historial permite recorrer las rutas o asignaciones intermedias. **Reiniciar resultados** limpia la salida y conserva el formulario.
 
-`PopulationEditor` en `src/views/population_editor.py` es un contenedor reutilizable. Sus parámetros son `dimensions`, `labels`, `bounds`, `on_change`, `on_refresh`, `list_height` y `max_individuals`. Admite más dimensiones; las funciones y gráficas de esta app cubren 1D/2D.
+## Ejecución y recorrido del historial
 
-### Presentación y gráficos
+Los cinco motores publican estados reales desde la inicialización y aceptan una solicitud de detención cooperativa. El cálculo ocurre en un hilo; las actualizaciones de Flet se procesan en el bucle de la interfaz. Mientras se calcula se muestran el problema, los parámetros, la iteración actual frente al límite, el mejor valor y las gráficas. La actualización visual se agrupa para mantener la respuesta de la aplicación.
 
-`Dashboard.render()` sólo presenta resultados, `charts.py` dibuja y `theme.py` centraliza colores. Las gráficas se renderizan a PNG con Matplotlib/Agg y se presentan en un `Chart` persistente con `Image` e `InteractiveViewer`. El visor tiene dimensiones explícitas y conserva zoom al cambiar de generación. Esto evita comparar miles de primitivas Canvas al actualizar la página.
+Si la búsqueda termina antes de que se puedan observar todos los pasos, el historial completo queda disponible. GA, PSO y DE tienen deslizador, paso anterior/siguiente y reproducción. AIS y ACO incorporan además accesos a Inicio, 1/3, 2/3 y Final. El candidato destacado corresponde al mejor encontrado hasta el paso visualizado.
 
-## Referencias
+**Detener** termina el paso en curso y conserva los estados completados; cambiar de algoritmo o volver a configuración durante el cálculo también solicita la detención. **Reiniciar** prepara una nueva ejecución conservando los datos del formulario y deshabilita los resultados y exportaciones anteriores. Volver al inicio del historial únicamente rebobina la reproducción y es un control distinto.
 
-Referencias oficiales: [Flet](https://flet.dev/docs/), [Slider](https://flet.dev/docs/controls/slider/), [Dropdown](https://flet.dev/docs/controls/dropdown/).
+## Exportación de resultados
+
+Los cinco paneles incluyen **Exportar CSV y JSON** al terminar o detener una ejecución. Los archivos se guardan con nombres únicos en `artifacts/results/` dentro del proyecto y la interfaz muestra ambas rutas. No se sobrescriben exportaciones anteriores.
+
+El CSV contiene una fila por iteración, con la evaluación y el vector del mejor candidato acumulado, el mejor de esa iteración, el motivo de término y la configuración. El JSON añade todos los individuos y evaluaciones por paso, la instancia, parámetros, sentido, semilla y procedencia del récord. Se exporta la configuración aplicada a esa ejecución, aunque después se editen los controles o se recorra otro punto del historial. En AIS se registra también la tasa base de mutación efectiva.
+
+## Comparaciones PSO
+
+**Comparar pruebas** genera una base y variantes de w, c1 y c2 manteniendo función, sentido, dominio, población, semilla e iteraciones. Se muestran convergencia y dispersión, se pueden añadir observaciones y exportar CSV y JSON a `artifacts/pso_comparisons`. Los registros permanecen en memoria hasta cerrar la aplicación; hay que exportarlos para conservarlos.
+
+## Organización y comprobaciones
+
+`src/models/` contiene contratos, funciones objetivo, problemas y motores independientes de Flet. `src/views/` contiene navegación, formularios, edición de instancias y gráficos con Matplotlib/Agg. `src/main.py` inicia el cliente de escritorio.
+
+```powershell
+.\.venv\Scripts\python.exe tools\check_de.py
+.\.venv\Scripts\python.exe tools\check_pso.py
+.\.venv\Scripts\python.exe tools\check_ais.py
+.\.venv\Scripts\python.exe tools\check_aco.py
+.\.venv\Scripts\python.exe tools\check_aco_panel.py
+.\.venv\Scripts\python.exe tools\check_problem_configuration.py
+.\.venv\Scripts\python.exe tools\check_run_workflow.py
+```
+
+Las comprobaciones de configuración cubren los datos editados de las tres representaciones, ambos sentidos, dominios y dimensiones, validaciones e instantáneas. Las de flujo comprueban nombres por algoritmo, parámetros que afectan realmente a la búsqueda, mejor individuo primero, progreso y detención, recorrido de iteraciones, reinicio y exportaciones de los cinco motores.
+
+Prueba opcional con una ventana Flet real y capturas: `.\.venv\Scripts\python.exe tools\check_problem_configuration_desktop.py`. Guarda las evidencias en `artifacts/problem_configuration_desktop/`.
+
+Para verificar los nombres de parámetros, el mejor candidato primero y diez archivos exportados desde botones reales: `.\.venv\Scripts\python.exe tools\check_run_workflow_desktop.py`. Guarda capturas y datos ficticios en `artifacts/run_workflow_desktop/`.
+
+## Alcance implementado y pendientes
+
+Implementado: cinco motores reales; selección por tipo y algoritmo compatible; nombres y ayudas específicos; problemas editables; dimensión nD, límites y sentido cuando corresponden; parámetros AIS y límites de velocidad PSO configurables; progreso, detención y reinicio; solución e historial explorable; mejor candidato histórico primero; configuración aplicada y exportación CSV/JSON para todos los algoritmos.
+
+Pendiente para la entrega académica completa: consolidación de los cinco experimentos documentados, comparación e interpretación, reporte PDF/LaTeX y video demostrativo. Las comprobaciones automáticas son evidencia técnica y no sustituyen esos entregables.

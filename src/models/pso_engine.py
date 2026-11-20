@@ -1,4 +1,4 @@
-"""Motor de Optimización por Enjambre de Partículas (PSO) para funciones 1D y 2D."""
+"""Motor de Optimización por Enjambre de Partículas para funciones continuas."""
 import random
 from models.contracts import Generation, Individual, Objective, PSOConfig
 
@@ -7,7 +7,7 @@ class PSOEngine:
     """Implementa el algoritmo PSO (Global-Best) mediante el método run(config)."""
     is_demo = False
 
-    def run(self, config: PSOConfig) -> list[Generation]:
+    def run(self, config: PSOConfig, should_stop=None, on_generation=None) -> list[Generation]:
         """Ejecuta el enjambre de partículas durante config.generations iteraciones.
 
         Ecuaciones por dimensión:
@@ -16,6 +16,7 @@ class PSOEngine:
         """
         # 1. Validar que los parámetros (w, c1, c2, iteraciones, semilla y población) sean correctos
         config.validate()
+        self.stop_reason = f"Límite de iteraciones alcanzado ({config.generations})."
 
         objective = config.objective
         maximize = objective.maximize
@@ -36,7 +37,12 @@ class PSOEngine:
         ]
 
         # 4. Ciclo principal de iteraciones (k = 1 hasta config.generations)
+        if on_generation:
+            on_generation(generations[0])
         for iteration in range(1, config.generations + 1):
+            if should_stop and should_stop():
+                self.stop_reason = f"Detenido por el usuario tras {iteration - 1} iteraciones."
+                break
             # Identificar la mejor posición global (gbest) entre todos los pbest actuales
             gbest_idx = self._best_index(pbest_scores, maximize)
             gbest_position = pbest_positions[gbest_idx]
@@ -76,6 +82,8 @@ class PSOEngine:
             generations.append(
                 Generation(index=iteration, population=positions, scores=scores)
             )
+            if on_generation:
+                on_generation(generations[-1])
 
         return generations
 
@@ -123,8 +131,8 @@ class PSOEngine:
             social_term = config.social * r2 * (gbest[d] - x_k)
             v_next = inertia_term + cognitive_term + social_term
 
-            # Límite de velocidad máxima (Vmax = 20 % del rango del eje) para evitar explosiones
-            v_max = 0.2 * (high - low)
+            # Límite de velocidad elegido por eje; inicialmente 20 % del intervalo.
+            v_max = config.velocity_limit * (high - low)
             v_next = max(-v_max, min(v_max, v_next))
 
             # Ecuación de posición: X^(k+1) = X^k + V^(k+1)

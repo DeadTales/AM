@@ -43,10 +43,10 @@ def make_trial(name: str, config: PSOConfig, snapshots: list[Generation], simula
 
 def comparable(a: PSOConfig, b: PSOConfig) -> bool:
     """Sólo compara misma función, dominio, posiciones iniciales, pasos y semilla."""
-    return (a.objective.name, a.objective.expression, a.objective.labels, a.objective.bounds, a.objective.maximize, a.population, a.generations, a.seed) == (b.objective.name, b.objective.expression, b.objective.labels, b.objective.bounds, b.objective.maximize, b.population, b.generations, b.seed)
+    return (a.objective.name, a.objective.expression, a.objective.labels, a.objective.bounds, a.objective.maximize, a.population, a.generations, a.seed, a.velocity_limit) == (b.objective.name, b.objective.expression, b.objective.labels, b.objective.bounds, b.objective.maximize, b.population, b.generations, b.seed, b.velocity_limit)
 
 
-def compare_parameters(config: PSOConfig, engine) -> list[PSOTrial]:
+def compare_parameters(config: PSOConfig, engine, should_stop=None) -> list[PSOTrial]:
     """Genera hasta siete pruebas cambiando un solo coeficiente respecto a la base."""
     config.validate()
     variants = [("Base", config)]
@@ -55,7 +55,15 @@ def compare_parameters(config: PSOConfig, engine) -> list[PSOTrial]:
         for suffix, candidate in (("bajo", max(0, value-delta)), ("alto", min(maximum, value+delta))):
             if candidate != value:
                 variants.append((f"{label} {suffix}", replace(config, **{field:candidate})))
-    return [make_trial(name, variant, engine.run(variant), getattr(engine, "is_demo", False)) for name, variant in variants]
+    trials = []
+    for name, variant in variants:
+        if should_stop and should_stop():
+            break
+        snapshots = engine.run(variant, should_stop=should_stop) if should_stop else engine.run(variant)
+        if len(snapshots) != variant.generations + 1:
+            break
+        trials.append(make_trial(name, variant, snapshots, getattr(engine, "is_demo", False)))
+    return trials
 
 
 def export_trials(trials: list[PSOTrial], directory: Path) -> tuple[Path, Path]:
@@ -66,11 +74,11 @@ def export_trials(trials: list[PSOTrial], directory: Path) -> tuple[Path, Path]:
     records = []
     with csv_path.open("w", newline="", encoding="utf-8-sig") as stream:
         writer = csv.writer(stream)
-        writer.writerow(["prueba", "simulacion", "funcion", "maximizar", "particulas", "iteraciones", "semilla", "w", "c1", "c2", "iteracion", "mejor_acumulado", "dispersion", "notas"])
+        writer.writerow(["prueba", "simulacion", "funcion", "maximizar", "particulas", "iteraciones", "semilla", "w", "c1", "c2", "limite_velocidad_fraccion", "iteracion", "mejor_acumulado", "dispersion", "notas"])
         for trial in trials:
             c = trial.config
             for index, (score, spread) in enumerate(zip(trial.history, trial.spread)):
-                writer.writerow([trial.name, trial.simulated, c.objective.name, c.objective.maximize, len(c.population), c.generations, c.seed, c.inertia, c.cognitive, c.social, index, score, spread, trial.notes])
-            records.append({"name":trial.name, "simulation":trial.simulated, "function":c.objective.name, "expression":c.objective.expression, "maximize":c.objective.maximize, "bounds":c.objective.bounds, "initial_population":c.population, "iterations":c.generations, "seed":c.seed, "w":c.inertia, "c1":c.cognitive, "c2":c.social, "history":trial.history, "spread":trial.spread, "notes":trial.notes})
+                writer.writerow([trial.name, trial.simulated, c.objective.name, c.objective.maximize, len(c.population), c.generations, c.seed, c.inertia, c.cognitive, c.social, c.velocity_limit, index, score, spread, trial.notes])
+            records.append({"name":trial.name, "simulation":trial.simulated, "function":c.objective.name, "expression":c.objective.expression, "maximize":c.objective.maximize, "bounds":c.objective.bounds, "initial_population":c.population, "iterations":c.generations, "seed":c.seed, "w":c.inertia, "c1":c.cognitive, "c2":c.social, "velocity_limit":c.velocity_limit, "history":trial.history, "spread":trial.spread, "notes":trial.notes})
     json_path.write_text(json.dumps(records, ensure_ascii=False, indent=2), encoding="utf-8")
     return csv_path, json_path

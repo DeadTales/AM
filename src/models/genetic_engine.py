@@ -1,4 +1,4 @@
-"""Motor de Algoritmo Genético real para optimización en 1D y 2D."""
+"""Motor de Algoritmo Genético real para optimización continua."""
 import random
 from models.contracts import AlgorithmConfig, Generation, Individual, Objective
 
@@ -9,10 +9,13 @@ class GeneticEngine:
     def __init__(self, seed: int | None = None):
         """Permite semilla opcional; si es None usa entropía del sistema."""
         self.seed = seed
+        self.stop_reason = ""
 
-    def run(self, config: AlgorithmConfig) -> list[Generation]:
+    def run(self, config: AlgorithmConfig, should_stop=None, on_generation=None) -> list[Generation]:
         """Ejecuta el algoritmo evolutivo durante config.generations iteraciones."""
-        rng = random.Random(self.seed)
+        config.validate()
+        rng = random.Random(config.seed if config.seed is not None else self.seed)
+        self.stop_reason = f"Límite de generaciones alcanzado ({config.generations})."
         objective = config.objective
         pop_size = len(config.population)
         maximize = objective.maximize
@@ -24,7 +27,12 @@ class GeneticEngine:
             Generation(index=0, population=current_pop, scores=current_scores)
         ]
 
+        if on_generation:
+            on_generation(generations[0])
         for gen_idx in range(1, config.generations + 1):
+            if should_stop and should_stop():
+                self.stop_reason = f"Detenido por el usuario tras {gen_idx - 1} generaciones."
+                break
             # 1. Identificar al mejor individuo actual (Elitismo)
             best_idx = (
                 max(range(pop_size), key=lambda i: current_scores[i])
@@ -62,6 +70,8 @@ class GeneticEngine:
             generations.append(
                 Generation(index=gen_idx, population=current_pop, scores=current_scores)
             )
+            if on_generation:
+                on_generation(generations[-1])
 
         return generations
 

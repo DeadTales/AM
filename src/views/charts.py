@@ -7,6 +7,7 @@ from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.colors import LinearSegmentedColormap
 from matplotlib.figure import Figure
 from models.contracts import Objective
+from models.categorical import AssignmentProblem, TSPProblem
 from views.theme import ACCENT, BORDER, MUTED
 
 
@@ -17,6 +18,7 @@ class Chart(ft.Container):
         """height fija el alto del visor; el ancho se ajusta al espacio de la tarjeta."""
         super().__init__(height=height, width=float("inf"))
         placeholder = b64decode("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=")
+        self.placeholder = placeholder
         self.raster = ft.Image(src=placeholder, width=800, height=height, fit=ft.BoxFit.CONTAIN, gapless_playback=True, semantics_label="Gráfica de la evolución")
         self.viewer = ft.InteractiveViewer(content=self.raster, height=height, width=float("inf"), constrained=True, min_scale=1, max_scale=4, trackpad_scroll_causes_scale=True)
         self.content = self.viewer
@@ -24,6 +26,11 @@ class Chart(ft.Container):
     def set_image(self, png: bytes):
         """Sustituye la imagen sin recrear el visor ni perder el estado del zoom."""
         self.raster.src = png
+        self.raster.visible = True
+
+    def clear(self):
+        """Limpia la imagen conservando visible el contenido requerido por InteractiveViewer."""
+        self.raster.src = self.placeholder
         self.raster.visible = True
 
 
@@ -64,6 +71,50 @@ def plot(
     axes.grid(color=BORDER, linewidth=0.6, alpha=0.7)
     axes.set_xlabel(xlabel, fontsize=10, color=MUTED)
     axes.set_ylabel("Evaluación", fontsize=10, color=MUTED)
+    return _png(figure)
+
+
+def categorical_solution(problem: TSPProblem | AssignmentProblem, solution) -> bytes:
+    """Dibuja una ruta TSP cerrada o las cargas y capacidades de la asignación."""
+    figure, axes = _figure(340)
+    if isinstance(problem, TSPProblem):
+        route = problem.closed_route(solution)
+        points = [problem.coordinates[city] for city in route]
+        axes.plot(*zip(*points), color=ACCENT, marker="o", linewidth=1.8)
+        for city, (x, y) in enumerate(problem.coordinates):
+            axes.annotate(problem.labels[city], (x, y), xytext=(5, 5), textcoords="offset points")
+        x, y = problem.coordinates[problem.start]
+        axes.scatter([x], [y], c="#9C5837", s=85, zorder=4, label="Inicio y fin")
+        axes.set_aspect("equal", adjustable="datalim")
+        axes.set_xlabel("x", color=MUTED)
+        axes.set_ylabel("y", color=MUTED)
+    else:
+        positions = np.arange(problem.resources)
+        axes.bar(positions - 0.18, problem.loads(solution), width=0.36, color=ACCENT, label="Carga")
+        axes.bar(positions + 0.18, problem.capacities, width=0.36, color=BORDER, label="Capacidad")
+        axes.set_xticks(positions, problem.resource_labels)
+        axes.set_xlabel("Recurso", color=MUTED)
+        axes.set_ylabel("Carga", color=MUTED)
+    axes.legend(fontsize=9)
+    axes.grid(color=BORDER, linewidth=0.6, alpha=0.5)
+    return _png(figure)
+
+
+def vector_plot(objective: Objective, population, best: int) -> bytes:
+    """Muestra las coordenadas reales de los individuos de dimensión mayor que dos."""
+    figure, axes = _figure(340)
+    positions = list(range(1, objective.dimensions + 1))
+    for index, individual in enumerate(population):
+        if index != best:
+            axes.plot(positions, individual, color=ACCENT, alpha=0.15, linewidth=0.8)
+    axes.plot(positions, population[best], color="#9C5837", marker="o", label="Mejor individuo")
+    axes.plot(positions, [pair[0] for pair in objective.bounds], "--", color=MUTED, label="Límites")
+    axes.plot(positions, [pair[1] for pair in objective.bounds], "--", color=MUTED)
+    axes.set_xticks(positions, objective.labels)
+    axes.set_xlabel("Variable", color=MUTED)
+    axes.set_ylabel("Valor de la coordenada", color=MUTED)
+    axes.grid(color=BORDER, linewidth=0.6, alpha=0.6)
+    axes.legend(fontsize=9)
     return _png(figure)
 
 
