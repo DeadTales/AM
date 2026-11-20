@@ -2,6 +2,7 @@
 import asyncio
 import flet as ft
 from models.contracts import AlgorithmConfig, PSOConfig, validate_generations, validate_population
+from models.de_engine import DEConfig, DEEngine
 from models.pso_demo_engine import PSODemoEngine
 from models.pso_engine import PSOEngine
 from models.pso_experiments import best_history, comparable, compare_parameters, make_trial
@@ -20,14 +21,25 @@ class Dashboard:
     """Coordina configuración, ejecución del motor y navegación por resultados."""
 
     def __init__(self, page: ft.Page, engine=None, algorithm: str = "genetic"):
-        """page aloja controles; engine ejecuta run(config), por defecto GeneticEngine."""
+        """page aloja controles; engine ejecuta run(config)."""
         self.page = page
-        if algorithm not in ("genetic", "pso"):
+        if algorithm not in ("genetic", "pso", "de"):
             raise ValueError("Algoritmo desconocido")
         self.algorithm = algorithm
         self.is_pso = algorithm == "pso"
-        self.step_label = "Iteración" if self.is_pso else "Generación"
-        self.engine = engine if engine is not None else (PSOEngine() if self.is_pso else GeneticEngine())
+        self.is_de = algorithm == "de"
+        self.is_genetic = algorithm == "genetic"
+        self.step_label = "Iteración" if (self.is_pso or self.is_de) else "Generación"
+        
+        if engine is not None:
+            self.engine = engine
+        elif self.is_pso:
+            self.engine = PSOEngine()
+        elif self.is_de:
+            self.engine = DEEngine()
+        else:
+            self.engine = GeneticEngine()
+            
         self.trials = []
         self.comparison_batch = 0
         self.index, self.total = 0, 40
@@ -40,19 +52,32 @@ class Dashboard:
         self.dimensions = ft.Dropdown(label="Variables por individuo", value="1", disabled=True, options=[ft.DropdownOption(key="1", text="Una variable · x"), ft.DropdownOption(key="2", text="Dos variables · x, y")], on_select=self.change_objective)
         self.size = field("Cantidad para generar", "20")
         self.generations = field("Generaciones", "40", on_change=self.invalidate)
+        
+        # Controles Genéticos
         self.selection = ft.Dropdown(label="Selección", value="torneo", options=[ft.DropdownOption(key=k, text=k.capitalize()) for k in ("torneo", "ruleta", "elitista")], on_select=self.invalidate)
         self.crossover_label = ft.Text("Cruza · 80 %", color=TEXT, size=14)
         self.crossover = ft.Slider(min=0, max=100, divisions=100, value=80, label="{value}%", active_color=ACCENT, on_change=self.change_crossover)
         self.mutation_label = ft.Text("Mutación · 5 %", color=TEXT, size=14)
         self.mutation = ft.Slider(min=0, max=100, divisions=100, value=5, label="{value}%", active_color=ACCENT, on_change=self.change_mutation)
+        
+        # Controles PSO
         self.inertia = field("Inercia (w)", "0.7", on_change=self.invalidate)
         self.cognitive = field("Coeficiente cognitivo (c1)", "1.5", on_change=self.invalidate)
         self.social = field("Coeficiente social (c2)", "1.5", on_change=self.invalidate)
         self.seed = field("Semilla para pruebas repetibles", "42", on_change=self.invalidate)
-        self.genetic_controls = ft.Column([self.selection, ft.Column([self.crossover_label, self.crossover], spacing=0), ft.Column([self.mutation_label, self.mutation], spacing=0)], visible=not self.is_pso)
+
+        # Controles DE
+        self.de_f = field("Factor de mutación (F) [0-2]", "0.8", on_change=self.invalidate)
+        self.de_cr = field("Tasa de cruza (CR) [0-1]", "0.9", on_change=self.invalidate)
+        self.de_strategy = ft.Dropdown(label="Estrategia", value="rand/1/bin", options=[ft.DropdownOption(key=k, text=k) for k in ("rand/1/bin", "best/1/bin")], on_select=self.invalidate)
+        self.de_seed = field("Semilla", "42", on_change=self.invalidate)
+        
+        self.genetic_controls = ft.Column([self.selection, ft.Column([self.crossover_label, self.crossover], spacing=0), ft.Column([self.mutation_label, self.mutation], spacing=0)], visible=self.is_genetic)
         self.pso_controls = ft.Column([self.inertia, self.cognitive, self.social, self.seed, ft.Text("w conserva velocidad; c1 atrae a la mejor posición personal; c2 a la mejor del enjambre.", size=12, color=MUTED)], visible=self.is_pso)
-        self.generations.label = "Iteraciones" if self.is_pso else "Generaciones"
-        self.mode_status = ft.Text("PSO · Simulación didáctica" if self.is_pso and self.is_demo else ("PSO conectado" if self.is_pso else "Evolutivo"), color=ACCENT, size=12)
+        self.de_controls = ft.Column([self.de_f, self.de_cr, self.de_strategy, self.de_seed, ft.Text("F controla la diferencia mutante; CR la probabilidad de retener la cruza.", size=12, color=MUTED)], visible=self.is_de)
+        
+        self.generations.label = "Iteraciones" if (self.is_pso or self.is_de) else "Generaciones"
+        self.mode_status = ft.Text("Evolución Diferencial" if self.is_de else ("PSO · Simulación didáctica" if self.is_pso and self.is_demo else ("PSO conectado" if self.is_pso else "Evolutivo")), color=ACCENT, size=12)
         self.message = ft.Text("Ajusta los parámetros y la población; después pulsa Ver resultados.", size=13, color=MUTED)
         self.formula = ft.Text(color=MUTED, size=12)
         initial_obj = get_objective("sine_1d", 1)
@@ -112,13 +137,13 @@ class Dashboard:
     def build(self, show_header: bool = True) -> ft.Column:
         """Construye dos vistas para separar preparación y análisis visual."""
         self.configuration_view.controls = [ft.ResponsiveRow([
-            card("Parámetros", "Define cómo se evaluará tu población.", [self.function, self.dimensions, self.formula, ft.Divider(color=BORDER), self.generations, self.genetic_controls, self.pso_controls], {"xs":12, "lg":4}),
+            card("Parámetros", "Define cómo se evaluará tu población.", [self.function, self.dimensions, self.formula, ft.Divider(color=BORDER), self.generations, self.genetic_controls, self.pso_controls, self.de_controls], {"xs":12, "lg":4}),
             card("Población inicial", "Cada fila es un individuo. Puedes agregarlo, editarlo o eliminarlo.", [ft.Row([self.size, ft.TextButton("Generar población", icon=ft.Icons.REFRESH, on_click=self.configure)], wrap=True), self.editor], {"xs":12, "lg":8}),
         ], spacing=20, run_spacing=20)]
         self.results_view.controls = [self.result_summary, self.metrics, ft.ResponsiveRow([
             card("Función y población", "Curva 1D, Superficie 3D o Mapa de calor 2D · Zoom y arrastre", [self.chart_controls, self.function_chart], {"xs":12, "lg":8}),
             card("Individuos", "Valores de la generación actual; el mejor aparece destacado.", [self.table], {"xs":12, "lg":4}),
-        ], spacing=20, run_spacing=20), card("Convergencia", "Mejor valor encontrado hasta cada iteración" if self.is_pso else "Mejor evaluación de cada generación", [ft.Row([ft.IconButton(icon=ft.Icons.SKIP_PREVIOUS, tooltip="Volver al inicio", on_click=self.reset), ft.IconButton(icon=ft.Icons.CHEVRON_LEFT, tooltip="Paso anterior", on_click=lambda e: self.step(-1)), self.play_button, ft.IconButton(icon=ft.Icons.CHEVRON_RIGHT, tooltip="Paso siguiente", on_click=lambda e: self.step(1))], wrap=True), self.timeline, self.progress, self.history_chart])]
+        ], spacing=20, run_spacing=20), card("Convergencia", "Mejor valor encontrado hasta cada iteración" if self.is_pso else ("Mejor evaluación de cada iteración" if self.is_de else "Mejor evaluación de cada generación"), [ft.Row([ft.IconButton(icon=ft.Icons.SKIP_PREVIOUS, tooltip="Volver al inicio", on_click=self.reset), ft.IconButton(icon=ft.Icons.CHEVRON_LEFT, tooltip="Paso anterior", on_click=lambda e: self.step(-1)), self.play_button, ft.IconButton(icon=ft.Icons.CHEVRON_RIGHT, tooltip="Paso siguiente", on_click=lambda e: self.step(1))], wrap=True), self.timeline, self.progress, self.history_chart])]
         self.body = ft.Column([self.message, self.router.outlet], spacing=16, scroll=ft.ScrollMode.AUTO, expand=True, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
         header = ft.Row([ft.Icon(ft.Icons.SCIENCE_OUTLINED, color=ACCENT, size=26), ft.Text("Evolución Lab", size=24, weight=ft.FontWeight.W_600, color=TEXT), self.mode_status], spacing=12)
         return ft.Column(([header] if show_header else [self.mode_status])+[self.submenu, self.body, self.actions], spacing=12, expand=True, horizontal_alignment=ft.CrossAxisAlignment.STRETCH)
@@ -196,18 +221,20 @@ class Dashboard:
             self.message.color = ERROR
         self.page.update()
 
-    def settings(self) -> AlgorithmConfig | PSOConfig:
+    def settings(self) -> AlgorithmConfig | PSOConfig | DEConfig:
         """Construye la entrada tipada del motor a partir de parámetros e individuos guardados."""
         try:
             total = int(self.generations.value)
         except (ValueError, TypeError):
-            raise ValueError("Las iteraciones deben ser un número entero." if self.is_pso else "Las generaciones deben ser un número entero.") from None
+            raise ValueError("Las iteraciones deben ser un número entero." if (self.is_pso or self.is_de) else "Las generaciones deben ser un número entero.") from None
         if not 1 <= total <= 500:
-            raise ValueError("Las iteraciones deben estar entre 1 y 500." if self.is_pso else "Las generaciones deben estar entre 1 y 500.")
+            raise ValueError("Las iteraciones deben estar entre 1 y 500." if (self.is_pso or self.is_de) else "Las generaciones deben estar entre 1 y 500.")
         if self.editor.editing_index is not None or any(input_field.value.strip() for input_field in self.editor.fields):
             raise ValueError("Guarda el individuo pendiente o cancela sus campos antes de ver resultados.")
+        
         objective = get_objective(self.function.value, int(self.dimensions.value))
         population = validate_population(self.editor.individuals, objective)
+        
         if self.is_pso:
             try:
                 config = PSOConfig(population, objective, total, float(self.inertia.value), float(self.cognitive.value), float(self.social.value), int(self.seed.value))
@@ -215,6 +242,22 @@ class Dashboard:
                 raise ValueError("w, c1 y c2 deben ser números con punto decimal; la semilla debe ser entera.") from None
             config.validate()
             return config
+        elif self.is_de:
+            try:
+                config = DEConfig(
+                    population=population,
+                    objective=objective,
+                    generations=total,
+                    mutation_factor=float(self.de_f.value),
+                    crossover_rate=float(self.de_cr.value),
+                    strategy=self.de_strategy.value,
+                    seed=int(self.de_seed.value)
+                )
+            except (ValueError, TypeError):
+                raise ValueError("F y CR deben ser números; la semilla debe ser entera.") from None
+            config.validate()
+            return config
+            
         return AlgorithmConfig(
             population=population,
             objective=objective,
@@ -254,17 +297,25 @@ class Dashboard:
                 for generation in snapshots
             ]
             self.timeline.max, self.timeline.divisions = self.total, self.total
-            self.message.value = "PSO: simulación didáctica, pendiente de conectar el motor definitivo." if self.is_pso and self.is_demo else ("Resultados PSO." if self.is_pso else ("Vista de demostración genética." if self.is_demo else "Resultados del algoritmo genético."))
             mode_str = "Maximización" if maximize else "Minimización"
-            self.result_summary.value = (f"{config.objective.name} ({mode_str}) · {len(config.population)} partículas · {config.generations} iteraciones · w={config.inertia:g}, c1={config.cognitive:g}, c2={config.social:g} · Semilla {config.seed}" if self.is_pso else (
-                f"{config.objective.name} ({mode_str}) · {config.objective.dimensions}D · "
-                f"{len(config.population)} individuos · Selección: {config.selection.capitalize()} · "
-                f"Cruza: {config.crossover_rate:.0%} · Mutación: {config.mutation_rate:.0%}"
-            ))
+            
             if self.is_pso:
+                self.message.value = "PSO: simulación didáctica, pendiente de conectar el motor definitivo." if self.is_demo else "Resultados PSO."
+                self.result_summary.value = f"{config.objective.name} ({mode_str}) · {len(config.population)} partículas · {config.generations} iteraciones · w={config.inertia:g}, c1={config.cognitive:g}, c2={config.social:g} · Semilla {config.seed}"
                 trial = make_trial(f"Prueba {len(self.trials)+1}", config, snapshots, self.is_demo)
                 self.trials.append(trial)
                 self._sync_trials(config)
+            elif self.is_de:
+                self.message.value = "Resultados de Evolución Diferencial."
+                self.result_summary.value = f"{config.objective.name} ({mode_str}) · {len(config.population)} individuos · {config.generations} iteraciones · F={config.mutation_factor:g}, CR={config.crossover_rate:g} · {config.strategy} · Semilla {config.seed}"
+            else:
+                self.message.value = "Vista de demostración genética." if self.is_demo else "Resultados del algoritmo genético."
+                self.result_summary.value = (
+                    f"{config.objective.name} ({mode_str}) · {config.objective.dimensions}D · "
+                    f"{len(config.population)} individuos · Selección: {config.selection.capitalize()} · "
+                    f"Cruza: {config.crossover_rate:.0%} · Mutación: {config.mutation_rate:.0%}"
+                )
+                
             self.render()
             self.submenu.set_enabled("results", True)
             self.show_view("results")
