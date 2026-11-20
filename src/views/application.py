@@ -9,6 +9,8 @@ from views.dashboard import Dashboard
 from views.menu import Menu, MenuItem
 from views.router import ViewRouter
 from views.theme import ACCENT, TEXT
+from models.aco_engine import ACOEngine
+from views.aco_panel import ACOPanel
 
 
 class OptimizationApp:
@@ -22,6 +24,7 @@ class OptimizationApp:
             "pso": Dashboard(page, engine=PSOEngine(), algorithm="pso"),
             "de": Dashboard(page, engine=DEEngine(), algorithm="de"),
             "ais": AISPanel(page, engine=AISEngine()),
+            "aco": ACOPanel(page, engine=ACOEngine()),
         }
         self.active = "genetic"
         self.router = ViewRouter(
@@ -35,7 +38,8 @@ class OptimizationApp:
             MenuItem("genetic", "Evolutivo", ft.Icons.SCIENCE_OUTLINED),
             MenuItem("pso", "Partículas · PSO", ft.Icons.GRAIN),
             MenuItem("de", "Evolución Diferencial", ft.Icons.TUNE),
-            MenuItem("ais", "AIS · Selección clonal", ft.Icons.BIOTECH)
+            MenuItem("ais", "AIS · Selección clonal", ft.Icons.BIOTECH),
+            MenuItem("aco", "Colonia de Hormigas", ft.Icons.BUG_REPORT)
         ], on_navigate=self.router.go)
         
         self.menu.select(self.active)
